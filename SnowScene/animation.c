@@ -104,17 +104,20 @@ void main(int argc, char** argv)
 	 world. Animation (moving or rotating things, responding to keyboard input,
 	 etc.) should only be performed within the think() function provided below.
  */
+
 void display(void)
 {
-	/*
-		TEMPLATE: REPLACE THIS COMMENT WITH YOUR DRAWING CODE
+	// clear the screen 
+	glClear(GL_COLOR_BUFFER_BIT);
 
-		Separate reusable pieces of drawing code into functions, which you can add
-		to the "Animation-Specific Functions" section below.
-
-		Remember to add prototypes for any new functions to the "Animation-Specific
-		Function Prototypes" section near the top of this template.
-	*/
+	// draw three points
+	glBegin(GL_POINTS);
+	glVertex2i(100, 50);
+	glVertex2i(100, 130);
+	glVertex2i(150, 130);
+	glEnd();
+	// send all output to display 
+	glFlush();
 }
 
 /*
@@ -180,6 +183,23 @@ void idle(void)
  */
 void init(void)
 {
+	// set background color to be black
+	glClearColor(0.0, 0.0, 0.0, 0.0);
+
+	// set the drawing to be blue
+	glColor3f(0.0f, 0.0f, 1.0f);
+
+	// set the dot size to be 4 by 4 pixels
+	glPointSize(4.0);
+
+	// set to projection mode
+	glMatrixMode(GL_PROJECTION);
+
+	// load the identity matrix
+	glLoadIdentity();
+
+	// set window mode to 2D orthographica and set the window size 
+	gluOrtho2D(0.0, 640.0, 0.0, 480.0);
 }
 
 /*
