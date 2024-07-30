@@ -11,13 +11,14 @@
 #include <math.h>
 #include <stdio.h>
 
-
  /******************************************************************************
   * Animation & Timing Setup
   ******************************************************************************/
 
+#define MAX_PARTICLES 15
+
   // Target frame rate (number of Frames Per Second).
-#define TARGET_FPS 60				
+#define TARGET_FPS 60			
 
 // Ideal time each frame should be displayed for (in milliseconds).
 const unsigned int FRAME_TIME = 1000 / TARGET_FPS;
