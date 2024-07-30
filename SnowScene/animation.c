@@ -110,14 +110,21 @@ void display(void)
 	// clear the screen 
 	glClear(GL_COLOR_BUFFER_BIT);
 
+	glColor3f(1.0f, 1.0f, 1.0f);
+
 	// draw three points
-	glBegin(GL_POINTS);
-	glVertex2i(100, 50);
-	glVertex2i(100, 130);
-	glVertex2i(150, 130);
+	glBegin(GL_POLYGON);
+	glColor3f(1.0, 1.0, 1.0); // white
+	glVertex2f(-0.5, -0.5);
+	glColor3f(1.0, 0.0, 0.0); // red
+	glVertex2f(-0.5, 0.5);
+	glColor3f(0.0, 0.0, 1.0); // blue
+	glVertex2f(0.5, 0.5);
+	glColor3f(1.0, 0.0, 1.0); // purple
+	glVertex2f(0.5, -0.5);
 	glEnd();
-	// send all output to display 
-	glFlush();
+
+	glutSwapBuffers();
 }
 
 /*
@@ -183,23 +190,7 @@ void idle(void)
  */
 void init(void)
 {
-	// set background color to be black
-	glClearColor(0.0, 0.0, 0.0, 0.0);
-
-	// set the drawing to be blue
-	glColor3f(0.0f, 0.0f, 1.0f);
-
-	// set the dot size to be 4 by 4 pixels
-	glPointSize(4.0);
-
-	// set to projection mode
-	glMatrixMode(GL_PROJECTION);
-
-	// load the identity matrix
-	glLoadIdentity();
-
-	// set window mode to 2D orthographica and set the window size 
-	gluOrtho2D(0.0, 640.0, 0.0, 480.0);
+	
 }
 
 /*
