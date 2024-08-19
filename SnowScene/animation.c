@@ -10,15 +10,24 @@
 #include <freeglut.h>
 #include <math.h>
 #include <stdio.h>
+#include <time.h>
 
  /******************************************************************************
   * Animation & Timing Setup
   ******************************************************************************/
 
+  // Target frame rate (number of Frames Per Second).
+#define TARGET_FPS 60
 #define MAX_PARTICLES 15
 
-  // Target frame rate (number of Frames Per Second).
-#define TARGET_FPS 60			
+float width = 1000.0;
+float height = 800.0;
+
+typedef struct {
+	float x, y;
+} Point;
+
+Point groundVertices[4];
 
 // Ideal time each frame should be displayed for (in milliseconds).
 const unsigned int FRAME_TIME = 1000 / TARGET_FPS;
@@ -55,24 +64,26 @@ void idle(void);
  * Animation-Specific Function Prototypes (add your own here)
  ******************************************************************************/
 
-void main(int argc, char** argv);
+void main(int argc, char **argv);
 void init(void);
 void think(void);
+void setColour(float r, float g, float b);
+void drawBackground(void);
 
 /******************************************************************************
  * Animation-Specific Setup (Add your own definitions, constants, and globals here)
  ******************************************************************************/
 
- /******************************************************************************
-  * Entry Point (don't put anything except the main function here)
-  ******************************************************************************/
+/******************************************************************************
+ * Entry Point (don't put anything except the main function here)
+ ******************************************************************************/
 
-void main(int argc, char** argv)
+void main(int argc, char **argv)
 {
 	// Initialize the OpenGL window.
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
-	glutInitWindowSize(800, 500);
+	glutInitWindowSize((int)width, (int)height);
 	glutCreateWindow("Animation");
 
 	// Set up the scene.
@@ -107,31 +118,30 @@ void main(int argc, char** argv)
  */
 
 void display(void)
-{
-	// clear the screen 
+{	
+	/*
+		TEMPLATE: REPLACE THIS COMMENT WITH YOUR DRAWING CODE
+		
+		Separate reusable pieces of drawing code into functions, which you can add
+		to the "Animation-Specific Functions" section below.
+		
+		Remember to add prototypes for any new functions to the "Animation-Specific
+		Function Prototypes" section near the top of this template.
+	*/
+
+	// clear the screen
 	glClear(GL_COLOR_BUFFER_BIT);
 
-	glColor3f(1.0f, 1.0f, 1.0f);
-
-	// draw three points
-	glBegin(GL_POLYGON);
-	glColor3f(1.0, 1.0, 1.0); // white
-	glVertex2f(-0.5, -0.5);
-	glColor3f(1.0, 0.0, 0.0); // red
-	glVertex2f(-0.5, 0.5);
-	glColor3f(0.0, 0.0, 1.0); // blue
-	glVertex2f(0.5, 0.5);
-	glColor3f(1.0, 0.0, 1.0); // purple
-	glVertex2f(0.5, -0.5);
-	glEnd();
-
+	drawBackground();
+	
 	glutSwapBuffers();
+
 }
 
 /*
 	Called when the OpenGL window has been resized.
 */
-void reshape(int width, int h)
+void reshape(int w, int h)
 {
 }
 
@@ -147,9 +157,9 @@ void keyPressed(unsigned char key, int x, int y)
 			Rather than using literals (e.g. "d" for diagnostics), create a new KEY_
 			definition in the "Keyboard Input Handling Setup" section of this file.
 		*/
-	case KEY_EXIT:
-		exit(0);
-		break;
+		case KEY_EXIT:
+			exit(0);
+			break;
 	}
 }
 
@@ -186,12 +196,29 @@ void idle(void)
  * Animation-Specific Functions (Add your own functions at the end of this section)
  ******************************************************************************/
 
- /*
-	 Initialise OpenGL and set up our scene before we begin the render loop.
- */
+/*
+	Initialise OpenGL and set up our scene before we begin the render loop.
+*/
 void init(void)
 {
+	// set window mode to 2D orthographic and set the window size
+	gluOrtho2D(0.0, width, 0.0, height);
+
+	// Randomize vertices and color
+	srand(time(NULL));  // Seed for random number generation
+
+	groundVertices[0].x = 0.0;
+	groundVertices[0].y = 200.0;	
 	
+	groundVertices[1].x = rand() % 100 / 1.0f + 50;
+	groundVertices[1].y = rand() % 100 / 1.0f + 250;
+
+	groundVertices[2].x = width - rand() % 100 / 1.0f - 50;
+	groundVertices[2].y = groundVertices[1].y;
+
+	groundVertices[3].x = 1000.0;
+	groundVertices[3].y = 200.0;
+
 }
 
 /*
@@ -243,6 +270,41 @@ void think(void)
 		You can use this same approach to animate other things like color, opacity,
 		brightness of lights, etc.
 	*/
+}
+
+void static setColour(float r, float g, float b) {
+	glColor3f(r / 255.0f, g / 255.0f, b / 255.0f);
+}
+
+void drawBackground(void) {
+	//Draw the sky
+	glBegin(GL_POLYGON);
+
+	setColour(118.0, 186.0, 251.0);
+	glVertex2f(0, 0);
+	glVertex2f(width, 0);
+
+	setColour(6.0, 130.0, 195.0);
+	glVertex2f(width, height);
+	glVertex2f(0, height);
+
+	glEnd();
+
+
+	//Draw the ground
+	glBegin(GL_POLYGON);
+	setColour(255.0, 250.0, 253.0);
+	glVertex2f(width, 0.0);
+	glVertex2f(0.0, 0.0);
+
+	//setColour(167.0, 191.0, 219.0);
+	setColour(0.0, 0, 0);
+	glVertex2f(groundVertices[0].x, groundVertices[0].y);
+	glVertex2f(groundVertices[1].x, groundVertices[1].y);
+	glVertex2f(groundVertices[2].x, groundVertices[2].y);
+	glVertex2f(groundVertices[3].x, groundVertices[3].y);
+
+	glEnd();
 }
 
 /******************************************************************************/
