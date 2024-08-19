@@ -18,7 +18,8 @@
 
   // Target frame rate (number of Frames Per Second).
 #define TARGET_FPS 60
-#define MAX_PARTICLES 15
+#define MAX_PARTICLES 1000
+#define M_PI 3.14159
 
 float width = 1000.0;
 float height = 800.0;
@@ -26,6 +27,16 @@ float height = 800.0;
 typedef struct {
 	float x, y;
 } Point;
+
+typedef struct {
+	int r, g, b;
+} Colour;
+
+Colour WHITE = { 255, 255, 255 };
+Colour GREY = { 130, 151, 173 };
+Colour BLACK = { 0, 0, 0 };
+Colour ORANGE = { 245, 127, 42 };
+
 
 Point groundVertices[4];
 
@@ -67,8 +78,9 @@ void idle(void);
 void main(int argc, char **argv);
 void init(void);
 void think(void);
-void setColour(float r, float g, float b);
+void setColour(int r, int g, int b);
 void drawBackground(void);
+void drawCircle(float cx, float cy, float r, int numSegments, Colour inner, Colour outer);
 
 /******************************************************************************
  * Animation-Specific Setup (Add your own definitions, constants, and globals here)
@@ -119,23 +131,22 @@ void main(int argc, char **argv)
 
 void display(void)
 {	
-	/*
-		TEMPLATE: REPLACE THIS COMMENT WITH YOUR DRAWING CODE
-		
-		Separate reusable pieces of drawing code into functions, which you can add
-		to the "Animation-Specific Functions" section below.
-		
-		Remember to add prototypes for any new functions to the "Animation-Specific
-		Function Prototypes" section near the top of this template.
-	*/
-
 	// clear the screen
 	glClear(GL_COLOR_BUFFER_BIT);
 
 	drawBackground();
 	
-	glutSwapBuffers();
+	//Draw the Snowman body
+	drawCircle(500, 300, 100, 100, WHITE, GREY);
+	drawCircle(500, 420, 80, 100, WHITE, GREY);
+	drawCircle(500, 520, 60, 100, WHITE, GREY);
+	
+	//Draw the eyes and nose
+	drawCircle(480, 550, 10, 50, BLACK, BLACK);
+	drawCircle(520, 550, 10, 50, BLACK, BLACK);
+	drawCircle(500, 520, 12, 7, ORANGE, ORANGE);
 
+	glutSwapBuffers();
 }
 
 /*
@@ -272,7 +283,7 @@ void think(void)
 	*/
 }
 
-void static setColour(float r, float g, float b) {
+void static setColour(int r, int g, int b) {
 	glColor3f(r / 255.0f, g / 255.0f, b / 255.0f);
 }
 
@@ -280,11 +291,11 @@ void drawBackground(void) {
 	//Draw the sky
 	glBegin(GL_POLYGON);
 
-	setColour(118.0, 186.0, 251.0);
+	setColour(118, 186, 251);
 	glVertex2f(0, 0);
 	glVertex2f(width, 0);
 
-	setColour(6.0, 130.0, 195.0);
+	setColour(6, 130, 195);
 	glVertex2f(width, height);
 	glVertex2f(0, height);
 
@@ -293,17 +304,33 @@ void drawBackground(void) {
 
 	//Draw the ground
 	glBegin(GL_POLYGON);
-	setColour(255.0, 250.0, 253.0);
+	setColour(255, 250, 253);
 	glVertex2f(width, 0.0);
 	glVertex2f(0.0, 0.0);
 
-	//setColour(167.0, 191.0, 219.0);
-	setColour(0.0, 0, 0);
+	setColour(167, 191, 219);
 	glVertex2f(groundVertices[0].x, groundVertices[0].y);
 	glVertex2f(groundVertices[1].x, groundVertices[1].y);
 	glVertex2f(groundVertices[2].x, groundVertices[2].y);
 	glVertex2f(groundVertices[3].x, groundVertices[3].y);
 
+	glEnd();
+}
+
+void drawCircle(float cx, float cy, float r, int numSegments, Colour inner, Colour outer) {
+	float angleIncrement = 2.0f * M_PI / (float)numSegments;
+
+	glBegin(GL_TRIANGLE_FAN);
+	setColour(inner.r, inner.g, inner.b);
+	glVertex2f(cx, cy);
+
+	setColour(outer.r, outer.g, outer.b);
+	for (int i = 0; i <= numSegments; i++) {
+		float angle = i * angleIncrement;
+		float x = cx + r * cosf(angle);
+		float y = cy + r * sinf(angle);
+		glVertex2f(x, y);
+	}
 	glEnd();
 }
 
