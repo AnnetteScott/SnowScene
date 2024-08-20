@@ -22,7 +22,7 @@
 #define TARGET_FPS 60
 #define MAX_PARTICLES 1500
 #define M_PI 3.14159f
-#define JUMP_TIME 48
+#define JUMP_TIME 49
 
 int width = 1000;
 int height = 1000;
@@ -333,7 +333,7 @@ void think(void)
 		}
 	}
 
-	if (jumping && timeJumping < JUMP_TIME) {
+	if (jumping && timeJumping <= JUMP_TIME) {
 		timeJumping++;
 
 		int adjust = timeJumping > JUMP_TIME / 2 ? -1 : 1;
@@ -347,7 +347,7 @@ void think(void)
 			snowman[i].cy += height * adjust;
 		}
 	}
-	else if (timeJumping >= JUMP_TIME) {
+	else if (timeJumping > JUMP_TIME) {
 		timeJumping = 0;
 		jumping = false;
 	}
