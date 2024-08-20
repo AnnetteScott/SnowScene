@@ -20,14 +20,18 @@
 
   // Target frame rate (number of Frames Per Second).
 #define TARGET_FPS 60
-#define MAX_PARTICLES 1000
-#define M_PI 3.14159
+#define MAX_PARTICLES 1500
+#define M_PI 3.14159f
+#define JUMP_TIME 48
 
-float width = 1000.0;
-float height = 800.0;
+int width = 1000;
+int height = 1000;
 
 int snowCount = 0;
-bool snowFall = true;
+int timeJumping = 0;
+bool snowFall = false;
+bool showDiagnostic = true;
+bool jumping = false;
 
 typedef struct {
 	float x, y;
@@ -41,6 +45,12 @@ typedef struct {
 	float x, y, speed, size, transparency;
 } Snow;
 
+typedef struct {
+	float cx, cy, r;
+	int segments;
+	Colour inner, outer;
+} Snowman;
+
 Colour WHITE = { 255, 255, 255 };
 Colour GREY = { 130, 151, 173 };
 Colour BLACK = { 0, 0, 0 };
@@ -49,6 +59,7 @@ Colour ORANGE = { 245, 127, 42 };
 
 Point groundVertices[4];
 Snow snowParticles[MAX_PARTICLES];
+Snowman snowman[6];
 
 // Ideal time each frame should be displayed for (in milliseconds).
 const unsigned int FRAME_TIME = 1000 / TARGET_FPS;
@@ -71,6 +82,8 @@ unsigned int frameStartTime = 0;
  // characters typed by the user to lowercase, so the SHIFT key is ignored.
 
 #define KEY_EXIT			27 // Escape key.
+#define KEY_JUMP			32 // D key.
+#define KEY_D				100 // D key.
 #define KEY_S				115 // S key.
 #define KEY_Q				113 // q key.
 
@@ -91,10 +104,12 @@ void main(int argc, char **argv);
 void init(void);
 void think(void);
 void createSnow(int i);
-void setColour(int r, int g, int b);
+void setColour(int r, int g, int b, float a);
 void drawBackground(void);
 void drawCircle(float cx, float cy, float r, int numSegments, Colour inner, Colour outer);
 void drawSnow(void);
+void drawSnowman(void);
+void displayDebug(void);
 
 /******************************************************************************
  * Animation-Specific Setup (Add your own definitions, constants, and globals here)
@@ -109,7 +124,7 @@ void main(int argc, char **argv)
 	// Initialize the OpenGL window.
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
-	glutInitWindowSize((int)width, (int)height);
+	glutInitWindowSize(width, height);
 	glutCreateWindow("Animation");
 
 	// Set up the scene.
@@ -149,20 +164,15 @@ void display(void)
 	glClear(GL_COLOR_BUFFER_BIT);
 
 	drawBackground();
+	drawSnowman();
 	
-	//Draw the Snowman body
-	drawCircle(0.500, 0.300, 0.100, 100, WHITE, GREY);
-	drawCircle(0.500, 0.420, 0.080, 100, WHITE, GREY);
-	drawCircle(0.500, 0.520, 0.060, 100, WHITE, GREY);
-	
-	//Draw the eyes and nose
-	drawCircle(0.480, 0.550, 0.010, 50, BLACK, BLACK);
-	drawCircle(0.520, 0.550, 0.010, 50, BLACK, BLACK);
-	drawCircle(0.500, 0.520, 0.012, 7, ORANGE, ORANGE);
-
 	//Draw snow if snow is allowed to fall
 	if (snowCount != 0) {
 		drawSnow();
+	}
+
+	if (showDiagnostic) {
+		displayDebug();
 	}
 
 	glutSwapBuffers();
@@ -171,10 +181,20 @@ void display(void)
 /*
 	Called when the OpenGL window has been resized.
 */
-void reshape(int w, int h)
+void reshape(int newWidth, int newHeight)
 {
-	//width = w;
-	//height = h;
+	glViewport(0, 0, newWidth, newHeight);
+
+	// Switch to projection matrix mode
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+
+	// Keep the projection fixed to the same orthogonal range (0 to 1)
+	gluOrtho2D(0.0f, 1.0f, 0.0f, 1.0f);
+
+	// Switch back to model view matrix mode
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
 }
 
 /*
@@ -186,12 +206,22 @@ void keyPressed(unsigned char key, int x, int y)
 		case KEY_S:
 			snowFall = !snowFall;
 			break;
+		case KEY_JUMP:
+			if (!jumping) {
+				jumping = true;
+			}
+			break;
+		case KEY_D:
+			showDiagnostic = !showDiagnostic;
+			break;
 		case KEY_Q:
 			exit(0);
 			break;
 		case KEY_EXIT:
 			exit(0);
 			break;
+		//default:
+		//	OutputDebugStringW(key);
 	}
 
 }
@@ -234,24 +264,38 @@ void idle(void)
 */
 void init(void)
 {
-	// set window mode to 2D orthographic and set the window size
-	gluOrtho2D(0.0, 1.0, 0.0, 0.8);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-	// Randomize vertices and color
-	srand(time(NULL));  // Seed for random number generation
+	gluOrtho2D(0.0f, 1.0f, 0.0f, 1.0f);
 
-	groundVertices[0].x = 0.0;
-	groundVertices[0].y = 0.200;
+	srand(time(NULL));  
+
+	groundVertices[0].x = 0.0f;
+	groundVertices[0].y = 0.200f;
 	
-	groundVertices[1].x = rand() % 100 / 1000.0f + 0.050;
-	groundVertices[1].y = rand() % 100 / 1000.0f + 0.250;
+	groundVertices[1].x = rand() % 100 / 1000.0f + 0.050f;
+	groundVertices[1].y = rand() % 100 / 1000.0f + 0.250f;
 
-	groundVertices[2].x = 1.0 - rand() % 100 / 1000.0f - 0.050;
+	groundVertices[2].x = 1.0f - rand() % 100 / 1000.0f - 0.050f;
 	groundVertices[2].y = groundVertices[1].y;
 
-	groundVertices[3].x = 1.0;
-	groundVertices[3].y = 0.200;
+	groundVertices[3].x = 1.0f;
+	groundVertices[3].y = 0.200f;
 
+	Snowman bottom = { 0.500f, 0.300f, 0.100f, 100, WHITE, GREY };
+	Snowman mid = { 0.500f, 0.420f, 0.080f, 100, WHITE, GREY };
+	Snowman top = { 0.500f, 0.520f, 0.060f, 100, WHITE, GREY };
+	Snowman lEye = { 0.480f, 0.550f, 0.010f, 50, BLACK, BLACK };
+	Snowman rEye = { 0.520f, 0.550f, 0.010f, 50, BLACK, BLACK };
+	Snowman nose = { 0.500f, 0.520f, 0.012f, 7, ORANGE, ORANGE };
+
+	snowman[0] = bottom;
+	snowman[1] = mid;
+	snowman[2] = top;
+	snowman[3] = lEye;
+	snowman[4] = rEye;
+	snowman[5] = nose;
 }
 
 /*
@@ -266,51 +310,83 @@ void think(void)
 {
 	//Add Snow
 	if (snowCount < MAX_PARTICLES && snowFall) {
-		for (int i = snowCount; i < snowCount + 1; i++) {
-			createSnow(i);
-		}
+		createSnow(snowCount);
 		snowCount++;
 	}
 	
 	for (int i = 0; i < snowCount; i++) {
 		snowParticles[i].y -= snowParticles[i].speed;
+		snowParticles[i].x += (rand() % 4 - 1) / 10000.0f;
+		if (snowParticles[i].y < 0.002 && snowFall) {
+			createSnow(i);
+		}
+	}
+
+	if (snowCount != 0 && !snowFall) {
+		for (int i = 0; i < snowCount; i++) {
+			if (snowParticles[i].y < 0.002) {
+				for (int j = i; j < snowCount - 1; j++) {
+					snowParticles[j] = snowParticles[j + 1];
+				}
+				snowCount--;
+			}
+		}
+	}
+
+	if (jumping && timeJumping < JUMP_TIME) {
+		timeJumping++;
+
+		int adjust = timeJumping > JUMP_TIME / 2 ? -1 : 1;
+		float maxHeight = 0.008f;
+		float normalizedTime = (float)timeJumping / JUMP_TIME;
+		
+		//Parabolic jumping height
+		float height = maxHeight * (1 - pow(2 * normalizedTime - 1, 2));
+
+		for (int i = 0; i < 6; i++) {
+			snowman[i].cy += height * adjust;
+		}
+	}
+	else if (timeJumping >= JUMP_TIME) {
+		timeJumping = 0;
+		jumping = false;
 	}
 }
 
 void createSnow(int i) {
-	snowParticles[i].x = rand() % 100 / 100.0f + 0.05;
-	snowParticles[i].y = 0.8;//rand() % 5 / 5.0f + 0.8;
+	snowParticles[i].x = rand() % 1000 / 1000.0f + 0.02f;
+	snowParticles[i].y = 1.0f;
 	snowParticles[i].size = rand() % 5 / 1.0f + 2;
-	snowParticles[i].speed = (rand() % 50 + 1) / 10000.0f;
-	snowParticles[i].transparency = rand() % 10;
+	snowParticles[i].speed = snowParticles[i].size / 10000.0f + 0.0002f;
+	snowParticles[i].transparency = rand() % 10 / 10.0f + 0.1f;
 }
 
-void static setColour(int r, int g, int b) {
-	glColor3f(r / 255.0f, g / 255.0f, b / 255.0f);
+void static setColour(int r, int g, int b, float a) {
+	glColor4f(r / 255.0f, g / 255.0f, b / 255.0f, a);
 }
 
 void drawBackground(void) {
 	//Draw the sky
 	glBegin(GL_POLYGON);
 
-	setColour(118, 186, 251);
-	glVertex2f(0, 0);
-	glVertex2f(1.0, 0);
+	setColour(118, 186, 251, 1.0f);
+	glVertex2f(0.0f, 0.0f);
+	glVertex2f(1.0f, 0.0f);
 
-	setColour(6, 130, 195);
-	glVertex2f(1.0, 0.8);
-	glVertex2f(0, 0.8);
+	setColour(6, 130, 195, 1.0f);
+	glVertex2f(1.0f, 1.0f);
+	glVertex2f(0.0f, 1.0f);
 
 	glEnd();
 
 
 	//Draw the ground
 	glBegin(GL_POLYGON);
-	setColour(255, 250, 253);
+	setColour(255, 250, 253, 1.0f);
 	glVertex2f(1.0, 0.0);
 	glVertex2f(0.0, 0.0);
 
-	setColour(167, 191, 219);
+	setColour(167, 191, 219, 1.0f);
 	glVertex2f(groundVertices[0].x, groundVertices[0].y);
 	glVertex2f(groundVertices[1].x, groundVertices[1].y);
 	glVertex2f(groundVertices[2].x, groundVertices[2].y);
@@ -323,10 +399,10 @@ void drawCircle(float cx, float cy, float r, int numSegments, Colour inner, Colo
 	float angleIncrement = 2.0f * M_PI / (float)numSegments;
 
 	glBegin(GL_TRIANGLE_FAN);
-	setColour(inner.r, inner.g, inner.b);
+	setColour(inner.r, inner.g, inner.b, 1.0f);
 	glVertex2f(cx, cy);
 
-	setColour(outer.r, outer.g, outer.b);
+	setColour(outer.r, outer.g, outer.b, 1.0f);
 	for (int i = 0; i <= numSegments; i++) {
 		float angle = i * angleIncrement;
 		float x = cx + r * cosf(angle);
@@ -337,13 +413,31 @@ void drawCircle(float cx, float cy, float r, int numSegments, Colour inner, Colo
 }
 
 void drawSnow(void) {
-	setColour(255, 255, 255);
 	for (int i = 0; i < snowCount; i++) {
+		setColour(255, 255, 255, snowParticles[i].transparency);
 		glPointSize(snowParticles[i].size);
 		glBegin(GL_POINTS);
 		glVertex2f(snowParticles[i].x, snowParticles[i].y);
 		glEnd();
 	}
+}
+
+void drawSnowman(void) {
+	drawCircle(snowman[0].cx, snowman[0].cy, snowman[0].r, snowman[0].segments, snowman[0].inner, snowman[0].outer);
+	drawCircle(snowman[1].cx, snowman[1].cy, snowman[1].r, snowman[1].segments, snowman[1].inner, snowman[1].outer);
+	drawCircle(snowman[2].cx, snowman[2].cy, snowman[2].r, snowman[2].segments, snowman[2].inner, snowman[2].outer);
+	drawCircle(snowman[3].cx, snowman[3].cy, snowman[3].r, snowman[3].segments, snowman[3].inner, snowman[3].outer);
+	drawCircle(snowman[4].cx, snowman[4].cy, snowman[4].r, snowman[4].segments, snowman[4].inner, snowman[4].outer);
+	drawCircle(snowman[5].cx, snowman[5].cy, snowman[5].r, snowman[5].segments, snowman[5].inner, snowman[5].outer);
+}
+
+void displayDebug(void) {
+	char infoString[200];
+	sprintf_s(infoString, sizeof(infoString), "Diagnostics:\n particles: %d of %d\nScene controls:\n s: toggle snow\n q: quit\n d: toggle diagnostic\n space: jump", snowCount, MAX_PARTICLES);
+
+	setColour(0, 0, 0, 1.0f);
+	glRasterPos2f(0.02f, 0.95f);
+	glutBitmapString(GLUT_BITMAP_HELVETICA_12, infoString);
 }
 
 /******************************************************************************/
