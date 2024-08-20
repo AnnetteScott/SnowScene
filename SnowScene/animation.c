@@ -9,8 +9,10 @@
 #include <Windows.h>
 #include <freeglut.h>
 #include <math.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <time.h>
+
 
  /******************************************************************************
   * Animation & Timing Setup
@@ -22,7 +24,10 @@
 #define M_PI 3.14159
 
 float width = 1000.0;
-float height = 800.0;
+float height = 1000.0;
+
+int snowCount = 0;
+bool snowFall = false;
 
 typedef struct {
 	float x, y;
@@ -32,6 +37,10 @@ typedef struct {
 	int r, g, b;
 } Colour;
 
+typedef struct {
+	int x, y, speed, size, transparency;
+} Snow;
+
 Colour WHITE = { 255, 255, 255 };
 Colour GREY = { 130, 151, 173 };
 Colour BLACK = { 0, 0, 0 };
@@ -39,6 +48,7 @@ Colour ORANGE = { 245, 127, 42 };
 
 
 Point groundVertices[4];
+Snow snowParticles[MAX_PARTICLES];
 
 // Ideal time each frame should be displayed for (in milliseconds).
 const unsigned int FRAME_TIME = 1000 / TARGET_FPS;
@@ -61,6 +71,8 @@ unsigned int frameStartTime = 0;
  // characters typed by the user to lowercase, so the SHIFT key is ignored.
 
 #define KEY_EXIT			27 // Escape key.
+#define KEY_S				115 // S key.
+#define KEY_Q				113 // q key.
 
 /******************************************************************************
  * GLUT Callback Prototypes
@@ -78,9 +90,11 @@ void idle(void);
 void main(int argc, char **argv);
 void init(void);
 void think(void);
+void createSnow(int i);
 void setColour(int r, int g, int b);
 void drawBackground(void);
 void drawCircle(float cx, float cy, float r, int numSegments, Colour inner, Colour outer);
+void drawSnow(void);
 
 /******************************************************************************
  * Animation-Specific Setup (Add your own definitions, constants, and globals here)
@@ -146,6 +160,11 @@ void display(void)
 	drawCircle(520, 550, 10, 50, BLACK, BLACK);
 	drawCircle(500, 520, 12, 7, ORANGE, ORANGE);
 
+	//Draw snow if snow is allowed to fall
+	if (snowCount != 0) {
+		drawSnow();
+	}
+
 	glutSwapBuffers();
 }
 
@@ -162,16 +181,17 @@ void reshape(int w, int h)
 void keyPressed(unsigned char key, int x, int y)
 {
 	switch (tolower(key)) {
-		/*
-			TEMPLATE: Add any new character key controls here.
-
-			Rather than using literals (e.g. "d" for diagnostics), create a new KEY_
-			definition in the "Keyboard Input Handling Setup" section of this file.
-		*/
+		case KEY_S:
+			snowFall = !snowFall;
+			break;
+		case KEY_Q:
+			exit(0);
+			break;
 		case KEY_EXIT:
 			exit(0);
 			break;
 	}
+
 }
 
 /*
@@ -242,45 +262,42 @@ void init(void)
 */
 void think(void)
 {
-	/*
-		TEMPLATE: REPLACE THIS COMMENT WITH YOUR ANIMATION/SIMULATION CODE
+	for (int i = 0; i < snowCount; i++) {
+		snowParticles[i].y -= snowParticles[i].speed / 10;
+		snowParticles[i].x += rand() % 4 - 1;
+		if (snowParticles[i].y < 20) {
+			if (snowFall) {
+				createSnow(i);
+			}
+		}
+	}
 
-		In this function, we update all the variables that control the animated
-		parts of our simulated world. For example: if you have a moving box, this is
-		where you update its coordinates to make it move. If you have something that
-		spins around, here's where you update its angle.
+	if (snowCount != 0 && !snowFall) {
+		for (int i = 0; i < snowCount; i++) {
+			if (snowParticles[i].y < 20) {
+				for (int j = i; i < snowCount - 1; i++) {
+					snowParticles[i] = snowParticles[i + 1];
+				}
+				snowCount--;
+			}
+		}
+	}
 
-		NOTHING CAN BE DRAWN IN HERE: you can only update the variables that control
-		how everything will be drawn later in display().
+	//Add Snow
+	if (snowCount < MAX_PARTICLES && snowFall) {
+		for (int i = snowCount; i < snowCount + 1; i++) {
+			createSnow(i);
+		}
+		snowCount++;
+	}
+}
 
-		How much do we move or rotate things? Because we use a fixed frame rate, we
-		assume there's always FRAME_TIME milliseconds between drawing each frame. So,
-		every time think() is called, we need to work out how far things should have
-		moved, rotated, or otherwise changed in that period of time.
-
-		Movement example:
-		* Let's assume a distance of 1.0 GL units is 1 metre.
-		* Let's assume we want something to move 2 metres per second on the x axis
-		* Each frame, we'd need to update its position like this:
-			x += 2 * (FRAME_TIME / 1000.0f)
-		* Note that we have to convert FRAME_TIME to seconds. We can skip this by
-		  using a constant defined earlier in this template:
-			x += 2 * FRAME_TIME_SEC;
-
-		Rotation example:
-		* Let's assume we want something to do one complete 360-degree rotation every
-		  second (i.e. 60 Revolutions Per Minute, or RPM).
-		* Each frame, we'd need to update our object's angle like this (we'll use the
-		  FRAME_TIME_SEC constant as per the example above):
-			a += 360 * FRAME_TIME_SEC;
-
-		This works for any type of "per second" change: just multiply the amount you'd
-		want to move in a full second by FRAME_TIME_SEC, and add or subtract that
-		from whatever variable you're updating.
-
-		You can use this same approach to animate other things like color, opacity,
-		brightness of lights, etc.
-	*/
+void createSnow(int i) {
+	snowParticles[i].x = rand() % 100 / 100.0f;
+	snowParticles[i].y = rand() % 50 / 50.0f + height;
+	snowParticles[i].size = rand() % 5 / 5.0f + 1;
+	snowParticles[i].speed = rand() % 2 + 1;
+	snowParticles[i].transparency = rand() % 10;
 }
 
 void static setColour(int r, int g, int b) {
@@ -332,6 +349,16 @@ void drawCircle(float cx, float cy, float r, int numSegments, Colour inner, Colo
 		glVertex2f(x, y);
 	}
 	glEnd();
+}
+
+void drawSnow(void) {
+	setColour(255, 255, 255);
+	for (int i = 0; i < snowCount; i++) {
+		glPointSize(snowParticles[i].size);
+		glBegin(GL_POINTS);
+		glVertex2i(snowParticles[i].x, snowParticles[i].y);
+		glEnd();
+	}
 }
 
 /******************************************************************************/
