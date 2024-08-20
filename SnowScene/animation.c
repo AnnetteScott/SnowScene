@@ -27,7 +27,7 @@ float width = 1000.0;
 float height = 800.0;
 
 int snowCount = 0;
-bool snowFall = false;
+bool snowFall = true;
 
 typedef struct {
 	float x, y;
@@ -38,7 +38,7 @@ typedef struct {
 } Colour;
 
 typedef struct {
-	int x, y, speed, size, transparency;
+	float x, y, speed, size, transparency;
 } Snow;
 
 Colour WHITE = { 255, 255, 255 };
@@ -151,14 +151,14 @@ void display(void)
 	drawBackground();
 	
 	//Draw the Snowman body
-	drawCircle(500, 300, 100, 100, WHITE, GREY);
-	drawCircle(500, 420, 80, 100, WHITE, GREY);
-	drawCircle(500, 520, 60, 100, WHITE, GREY);
+	drawCircle(0.500, 0.300, 0.100, 100, WHITE, GREY);
+	drawCircle(0.500, 0.420, 0.080, 100, WHITE, GREY);
+	drawCircle(0.500, 0.520, 0.060, 100, WHITE, GREY);
 	
 	//Draw the eyes and nose
-	drawCircle(480, 550, 10, 50, BLACK, BLACK);
-	drawCircle(520, 550, 10, 50, BLACK, BLACK);
-	drawCircle(500, 520, 12, 7, ORANGE, ORANGE);
+	drawCircle(0.480, 0.550, 0.010, 50, BLACK, BLACK);
+	drawCircle(0.520, 0.550, 0.010, 50, BLACK, BLACK);
+	drawCircle(0.500, 0.520, 0.012, 7, ORANGE, ORANGE);
 
 	//Draw snow if snow is allowed to fall
 	if (snowCount != 0) {
@@ -235,22 +235,22 @@ void idle(void)
 void init(void)
 {
 	// set window mode to 2D orthographic and set the window size
-	gluOrtho2D(0.0, width, 0.0, height);
+	gluOrtho2D(0.0, 1.0, 0.0, 0.8);
 
 	// Randomize vertices and color
 	srand(time(NULL));  // Seed for random number generation
 
 	groundVertices[0].x = 0.0;
-	groundVertices[0].y = 200.0;	
+	groundVertices[0].y = 0.200;
 	
-	groundVertices[1].x = rand() % 100 / 1.0f + 50;
-	groundVertices[1].y = rand() % 100 / 1.0f + 250;
+	groundVertices[1].x = rand() % 100 / 1000.0f + 0.050;
+	groundVertices[1].y = rand() % 100 / 1000.0f + 0.250;
 
-	groundVertices[2].x = width - rand() % 100 / 1.0f - 50;
+	groundVertices[2].x = 1.0 - rand() % 100 / 1000.0f - 0.050;
 	groundVertices[2].y = groundVertices[1].y;
 
-	groundVertices[3].x = 1000.0;
-	groundVertices[3].y = 200.0;
+	groundVertices[3].x = 1.0;
+	groundVertices[3].y = 0.200;
 
 }
 
@@ -264,27 +264,6 @@ void init(void)
 */
 void think(void)
 {
-	for (int i = 0; i < snowCount; i++) {
-		snowParticles[i].y -= snowParticles[i].speed;
-		snowParticles[i].x += rand() % 4 - 1;
-		if (snowParticles[i].y < 20) {
-			if (snowFall) {
-				createSnow(i);
-			}
-		}
-	}
-
-	if (snowCount != 0 && !snowFall) {
-		for (int i = 0; i < snowCount; i++) {
-			if (snowParticles[i].y < 20) {
-				for (int j = i; i < snowCount - 1; i++) {
-					snowParticles[i] = snowParticles[i + 1];
-				}
-				snowCount--;
-			}
-		}
-	}
-
 	//Add Snow
 	if (snowCount < MAX_PARTICLES && snowFall) {
 		for (int i = snowCount; i < snowCount + 1; i++) {
@@ -292,13 +271,17 @@ void think(void)
 		}
 		snowCount++;
 	}
+	
+	for (int i = 0; i < snowCount; i++) {
+		snowParticles[i].y -= snowParticles[i].speed;
+	}
 }
 
 void createSnow(int i) {
-	snowParticles[i].x = rand() % 1000 / 1.0f;
-	snowParticles[i].y = rand() % 50 / 1.0f + height;
-	snowParticles[i].size = rand() % 5 / 1.0f + 1;
-	snowParticles[i].speed = rand() % 2 + 1;
+	snowParticles[i].x = rand() % 100 / 100.0f + 0.05;
+	snowParticles[i].y = 0.8;//rand() % 5 / 5.0f + 0.8;
+	snowParticles[i].size = rand() % 5 / 1.0f + 2;
+	snowParticles[i].speed = (rand() % 50 + 1) / 10000.0f;
 	snowParticles[i].transparency = rand() % 10;
 }
 
@@ -312,11 +295,11 @@ void drawBackground(void) {
 
 	setColour(118, 186, 251);
 	glVertex2f(0, 0);
-	glVertex2f(width, 0);
+	glVertex2f(1.0, 0);
 
 	setColour(6, 130, 195);
-	glVertex2f(width, height);
-	glVertex2f(0, height);
+	glVertex2f(1.0, 0.8);
+	glVertex2f(0, 0.8);
 
 	glEnd();
 
@@ -324,7 +307,7 @@ void drawBackground(void) {
 	//Draw the ground
 	glBegin(GL_POLYGON);
 	setColour(255, 250, 253);
-	glVertex2f(width, 0.0);
+	glVertex2f(1.0, 0.0);
 	glVertex2f(0.0, 0.0);
 
 	setColour(167, 191, 219);
@@ -358,7 +341,7 @@ void drawSnow(void) {
 	for (int i = 0; i < snowCount; i++) {
 		glPointSize(snowParticles[i].size);
 		glBegin(GL_POINTS);
-		glVertex2i(snowParticles[i].x, snowParticles[i].y);
+		glVertex2f(snowParticles[i].x, snowParticles[i].y);
 		glEnd();
 	}
 }
