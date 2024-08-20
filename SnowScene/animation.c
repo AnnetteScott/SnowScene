@@ -24,7 +24,7 @@
 #define M_PI 3.14159
 
 float width = 1000.0;
-float height = 1000.0;
+float height = 800.0;
 
 int snowCount = 0;
 bool snowFall = false;
@@ -173,6 +173,8 @@ void display(void)
 */
 void reshape(int w, int h)
 {
+	//width = w;
+	//height = h;
 }
 
 /*
@@ -263,7 +265,7 @@ void init(void)
 void think(void)
 {
 	for (int i = 0; i < snowCount; i++) {
-		snowParticles[i].y -= snowParticles[i].speed / 10;
+		snowParticles[i].y -= snowParticles[i].speed;
 		snowParticles[i].x += rand() % 4 - 1;
 		if (snowParticles[i].y < 20) {
 			if (snowFall) {
@@ -293,9 +295,9 @@ void think(void)
 }
 
 void createSnow(int i) {
-	snowParticles[i].x = rand() % 100 / 100.0f;
-	snowParticles[i].y = rand() % 50 / 50.0f + height;
-	snowParticles[i].size = rand() % 5 / 5.0f + 1;
+	snowParticles[i].x = rand() % 1000 / 1.0f;
+	snowParticles[i].y = rand() % 50 / 1.0f + height;
+	snowParticles[i].size = rand() % 5 / 1.0f + 1;
 	snowParticles[i].speed = rand() % 2 + 1;
 	snowParticles[i].transparency = rand() % 10;
 }
