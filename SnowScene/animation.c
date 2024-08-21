@@ -32,13 +32,14 @@ int timeJumping = 0;
 bool snowFall = false;
 bool showDiagnostic = true;
 bool jumping = false;
+bool dayTime = true;
 
 typedef struct {
 	float x, y;
 } Point;
 
 typedef struct {
-	int r, g, b;
+	float r, g, b;
 } Colour;
 
 typedef struct {
@@ -51,15 +52,26 @@ typedef struct {
 	Colour inner, outer;
 } Snowman;
 
+typedef struct {
+	float x, y;
+	Colour colour;
+} Sun;
+
 Colour WHITE = { 255, 255, 255 };
 Colour GREY = { 130, 151, 173 };
 Colour BLACK = { 0, 0, 0 };
 Colour ORANGE = { 245, 127, 42 };
+Colour YELLOW = { 241, 221, 24 };
+Colour DARKBLUE = { 6, 130, 195 };
+Colour LIGHTBLUE = { 118, 186, 251 };
 
 
 Point groundVertices[4];
 Snow snowParticles[MAX_PARTICLES];
 Snowman snowman[6];
+Sun sun;
+Colour skyTop = { 6, 130, 195 };
+Colour skyBottom = { 118, 186, 251 };
 
 // Ideal time each frame should be displayed for (in milliseconds).
 const unsigned int FRAME_TIME = 1000 / TARGET_FPS;
@@ -110,6 +122,7 @@ void drawCircle(float cx, float cy, float r, int numSegments, Colour inner, Colo
 void drawSnow(void);
 void drawSnowman(void);
 void displayDebug(void);
+Colour fadeColor(Colour start, Colour end);
 
 /******************************************************************************
  * Animation-Specific Setup (Add your own definitions, constants, and globals here)
@@ -164,6 +177,9 @@ void display(void)
 	glClear(GL_COLOR_BUFFER_BIT);
 
 	drawBackground();
+	
+	drawCircle(sun.x, sun.y, 0.1f, 100, sun.colour, sun.colour);
+	
 	drawSnowman();
 	
 	//Draw snow if snow is allowed to fall
@@ -271,18 +287,18 @@ void init(void)
 
 	srand(time(NULL));  
 
+	// Ground
 	groundVertices[0].x = 0.0f;
 	groundVertices[0].y = 0.200f;
-	
 	groundVertices[1].x = rand() % 100 / 1000.0f + 0.050f;
 	groundVertices[1].y = rand() % 100 / 1000.0f + 0.250f;
-
 	groundVertices[2].x = 1.0f - rand() % 100 / 1000.0f - 0.050f;
 	groundVertices[2].y = groundVertices[1].y;
-
 	groundVertices[3].x = 1.0f;
 	groundVertices[3].y = 0.200f;
 
+
+	// Snowman
 	Snowman bottom = { 0.500f, 0.300f, 0.100f, 100, WHITE, GREY };
 	Snowman mid = { 0.500f, 0.420f, 0.080f, 100, WHITE, GREY };
 	Snowman top = { 0.500f, 0.520f, 0.060f, 100, WHITE, GREY };
@@ -296,6 +312,10 @@ void init(void)
 	snowman[3] = lEye;
 	snowman[4] = rEye;
 	snowman[5] = nose;
+
+	sun.x = 0.0f;
+	sun.y = 0.7f;
+	sun.colour = YELLOW;
 }
 
 /*
@@ -308,7 +328,7 @@ void init(void)
 */
 void think(void)
 {
-	//Add Snow
+	//Snow
 	if (snowCount < MAX_PARTICLES && snowFall) {
 		createSnow(snowCount);
 		snowCount++;
@@ -333,6 +353,7 @@ void think(void)
 		}
 	}
 
+	//Jumping
 	if (jumping && timeJumping <= JUMP_TIME) {
 		timeJumping++;
 
@@ -351,6 +372,58 @@ void think(void)
 		timeJumping = 0;
 		jumping = false;
 	}
+
+	//Sun
+	sun.x += 0.001f;
+
+	//Give the sun an arc
+	if (sun.x < 0.4f) {
+		sun.y += 0.0005f;
+	}
+	else if (sun.x >= 0.4f && sun.x < 0.5f) {
+		sun.y += 0.00005f;
+	}
+	else if (sun.x >= 0.5f && sun.x < 0.6f) {
+		sun.y -= 0.00005f;
+	}
+	else {
+		sun.y -= 0.0005f;
+	}
+
+	if (sun.x > 1.1f) {
+		sun.x = -0.f;
+		sun.y = 0.7f;
+		if (dayTime) {
+			sun.colour = WHITE;
+			dayTime = false;
+			skyTop = BLACK;
+			skyBottom = GREY;
+		}
+		else {
+			sun.colour = YELLOW;
+			dayTime = true;
+			skyTop = DARKBLUE;
+			skyBottom = LIGHTBLUE;
+		}
+	}
+
+	if (sun.x > 0.9f && dayTime) {
+		skyTop = fadeColor(skyTop, BLACK);
+		skyBottom = fadeColor(skyBottom, GREY);
+	}
+	
+	if (sun.x > 0.9f && !dayTime) {
+		skyTop = fadeColor(skyTop, DARKBLUE);
+		skyBottom = fadeColor(skyBottom, LIGHTBLUE);
+	}
+}
+
+Colour fadeColor(Colour start, Colour end) {
+	Colour result;
+	result.r = start.r + ((end.r - start.r) / 50);
+	result.g = start.g + ((end.g - start.g) / 50);
+	result.b = start.b + ((end.b - start.b) / 50);
+	return result;
 }
 
 void createSnow(int i) {
@@ -367,18 +440,21 @@ void static setColour(int r, int g, int b, float a) {
 
 void drawBackground(void) {
 	//Draw the sky
+
+	Colour top;
+	Colour bottom;
+
 	glBegin(GL_POLYGON);
 
-	setColour(118, 186, 251, 1.0f);
+	setColour(skyBottom.r, skyBottom.g, skyBottom.b, 1.0f);
 	glVertex2f(0.0f, 0.0f);
 	glVertex2f(1.0f, 0.0f);
 
-	setColour(6, 130, 195, 1.0f);
+	setColour(skyTop.r, skyTop.g, skyTop.b, 0.9f);
 	glVertex2f(1.0f, 1.0f);
 	glVertex2f(0.0f, 1.0f);
 
 	glEnd();
-
 
 	//Draw the ground
 	glBegin(GL_POLYGON);
@@ -435,7 +511,13 @@ void displayDebug(void) {
 	char infoString[200];
 	sprintf_s(infoString, sizeof(infoString), "Diagnostics:\n particles: %d of %d\nScene controls:\n s: toggle snow\n q: quit\n d: toggle diagnostic\n space: jump", snowCount, MAX_PARTICLES);
 
-	setColour(0, 0, 0, 1.0f);
+	if (dayTime) {
+		setColour(0, 0, 0, 1.0f);
+	}
+	else {
+		setColour(255, 255, 255, 1.0f);
+	}
+
 	glRasterPos2f(0.02f, 0.95f);
 	glutBitmapString(GLUT_BITMAP_HELVETICA_12, infoString);
 }
